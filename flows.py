@@ -38,29 +38,15 @@ class MaskedLinear(nn.Linear):
 nn.MaskedLinear = MaskedLinear
 
 
-class HalfTanh(nn.Module):
-    """Apply tanh to the second half of the given tensor. This corresponds
-    to the scaling parameter.
-    """
-    def __init__(self, half_dim):
-        """
-        Args:
-            half_dim: One half the dimensionality of the tensor
-        """
-        super(HalfTanh, self).__init__()
-        self.half_dim = half_dim
-
-    def forward(self, x):
-        return torch.cat((x[:, :self.half_dim], torch.tanh(x[:, self.half_dim:])), 1)
-
-
 class MADE(nn.Module):
     """ An implementation of MADE
     (https://arxiv.org/abs/1502.03509s).
     """
 
-    def __init__(self, num_inputs, num_hidden):
+    def __init__(self, num_inputs, num_hidden, use_tanh=True):
         super(MADE, self).__init__()
+
+        self.use_tanh = use_tanh
 
         input_mask = get_mask(
             num_inputs, num_hidden, num_inputs, mask_type='input')
@@ -71,18 +57,22 @@ class MADE(nn.Module):
         self.main = nn.Sequential(
             nn.MaskedLinear(num_inputs, num_hidden, input_mask), nn.ReLU(),
             nn.MaskedLinear(num_hidden, num_hidden, hidden_mask), nn.ReLU(),
-            nn.MaskedLinear(num_hidden, num_inputs * 2, output_mask), 
-            HalfTanh(num_inputs))
+            nn.MaskedLinear(num_hidden, num_inputs * 2, output_mask))
 
     def forward(self, inputs, mode='direct'):
         if mode == 'direct':
             m, a = self.main(inputs).chunk(2, 1)
+            if self.use_tanh:
+                a = torch.tanh(a)
             u = (inputs - m) * torch.exp(-a)
             return u, -a.sum(-1, keepdim=True)
+
         else:
             x = torch.zeros_like(inputs)
             for i_col in range(inputs.shape[1]):
                 m, a = self.main(x).chunk(2, 1)
+                if self.use_tanh:
+                    a = torch.tanh(a)
                 x[:, i_col] = inputs[:, i_col] * torch.exp(a[:, i_col]) + m[:, i_col]
             return x, -a.sum(-1, keepdim=True)
 
