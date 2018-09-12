@@ -43,8 +43,10 @@ class MADE(nn.Module):
     (https://arxiv.org/abs/1502.03509s).
     """
 
-    def __init__(self, num_inputs, num_hidden):
+    def __init__(self, num_inputs, num_hidden, use_tanh=True):
         super(MADE, self).__init__()
+
+        self.use_tanh = use_tanh
 
         input_mask = get_mask(
             num_inputs, num_hidden, num_inputs, mask_type='input')
@@ -59,17 +61,20 @@ class MADE(nn.Module):
 
     def forward(self, inputs, mode='direct'):
         if mode == 'direct':
-            x = self.main(inputs)
+            m, a = self.main(inputs).chunk(2, 1)
+            if self.use_tanh:
+                a = torch.tanh(a)
+            u = (inputs - m) * torch.exp(-a)
+            return u, -a.sum(-1, keepdim=True)
 
-            m, a = x.chunk(2, 1)
-
-            u = (inputs - m) * torch.exp(a)
-            return u, a.sum(-1, keepdim=True)
         else:
-            # TODO:
-            # Sampling with MADE is tricky.
-            # We need to perform N forward passes.
-            raise NotImplementedError
+            x = torch.zeros_like(inputs)
+            for i_col in range(inputs.shape[1]):
+                m, a = self.main(x).chunk(2, 1)
+                if self.use_tanh:
+                    a = torch.tanh(a)
+                x[:, i_col] = inputs[:, i_col] * torch.exp(a[:, i_col]) + m[:, i_col]
+            return x, -a.sum(-1, keepdim=True)
 
 
 class BatchNormFlow(nn.Module):

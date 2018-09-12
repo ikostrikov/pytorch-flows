@@ -38,7 +38,7 @@ parser.add_argument(
 parser.add_argument(
     '--dataset',
     default='POWER',
-    help='POWER | GAS | HEPMASS | MINIBONE | BSDS300')
+    help='POWER | GAS | HEPMASS | MINIBONE | BSDS300 | MOONS')
 parser.add_argument('--flow', default='maf', help='flow to use: maf | glow')
 parser.add_argument(
     '--no-cuda',
@@ -68,7 +68,7 @@ if args.cuda:
 
 kwargs = {'num_workers': 4, 'pin_memory': True} if args.cuda else {}
 
-assert args.dataset in ['POWER', 'GAS', 'HEPMASS', 'MINIBONE', 'BSDS300']
+assert args.dataset in ['POWER', 'GAS', 'HEPMASS', 'MINIBONE', 'BSDS300', 'MOONS']
 dataset = getattr(datasets, args.dataset)()
 
 train_tensor = torch.from_numpy(dataset.trn.x)
@@ -103,7 +103,8 @@ num_hidden = {
     'GAS': 100,
     'HEPMASS': 512,
     'MINIBOONE': 512,
-    'BSDS300': 512
+    'BSDS300': 512,
+    'MOONS': 64
 }[args.dataset]
 
 modules = []
@@ -212,3 +213,24 @@ for epoch in range(args.epochs):
         best_validation_epoch, best_validation_loss))
 
 validate(best_validation_epoch, best_model, test_loader, prefix='Test')
+
+if args.dataset == 'MOONS':
+    # generate some examples
+    best_model.eval()
+    u = np.random.randn(500, 2).astype(np.float32)
+    u_tens = torch.from_numpy(u).to(device)
+    x_synth = best_model.forward(u_tens, mode='inverse')[0].detach().cpu().numpy()
+
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+
+    ax = fig.add_subplot(121)
+    ax.plot(dataset.val.x[:,0], dataset.val.x[:,1], '.')
+    ax.set_title('Real data')
+
+    ax = fig.add_subplot(122)
+    ax.plot(x_synth[:,0], x_synth[:,1], '.')
+    ax.set_title('Synth data')
+
+    plt.show()
