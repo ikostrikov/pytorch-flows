@@ -76,6 +76,17 @@ class MADE(nn.Module):
                 x[:, i_col] = inputs[:, i_col] * torch.exp(a[:, i_col]) + m[:, i_col]
             return x, -a.sum(-1, keepdim=True)
 
+class Sigmoid(nn.Module):
+    def __init__(self):
+        super(Sigmoid, self).__init__()
+
+    def forward(self, inputs, mode='direct'):
+        if mode == 'direct':
+            s = torch.sigmoid
+            return s(inputs), torch.log(s(inputs) * (1 - s(inputs))).sum(-1, keepdim=True)
+        else:
+            return torch.log(inputs / (1 - inputs)), -torch.log(inputs - inputs ** 2).sum(-1, keepdim=True)
+
 
 class BatchNormFlow(nn.Module):
     """ An implementation of a batch normalization layer from
