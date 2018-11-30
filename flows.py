@@ -50,10 +50,15 @@ class MADE(nn.Module):
     (https://arxiv.org/abs/1502.03509s).
     """
 
-    def __init__(self, num_inputs, num_hidden, num_cond_inputs=None, use_tanh=False):
+    def __init__(self, num_inputs, num_hidden, num_cond_inputs=None, act='relu'):
         super(MADE, self).__init__()
 
-        self.use_tanh = use_tanh
+        activations = {
+            'relu': nn.ReLU,
+            'sigmoid': nn.Sigmoid,
+            'tanh': nn.Tanh
+        }
+        act_func = activations[act]
 
         input_mask = get_mask(
             num_inputs, num_hidden, num_inputs, mask_type='input')
@@ -64,17 +69,15 @@ class MADE(nn.Module):
         self.joiner = nn.MaskedLinear(num_inputs, num_hidden, input_mask, num_cond_inputs)
 
         self.trunk = nn.Sequential(
-            nn.ReLU(),
+            act_func(),
             nn.MaskedLinear(num_hidden, num_hidden, hidden_mask),
-            nn.ReLU(),
+            act_func(),
             nn.MaskedLinear(num_hidden, num_inputs * 2, output_mask))
 
     def forward(self, inputs, cond_inputs=None, mode='direct'):
         if mode == 'direct':
             h = self.joiner(inputs, cond_inputs)
             m, a = self.trunk(h).chunk(2, 1)
-            if self.use_tanh:
-                a = torch.tanh(a)
             u = (inputs - m) * torch.exp(-a)
             return u, -a.sum(-1, keepdim=True)
 
@@ -83,8 +86,6 @@ class MADE(nn.Module):
             for i_col in range(inputs.shape[1]):
                 h = self.joiner(x, cond_inputs)
                 m, a = self.trunk(h).chunk(2, 1)
-                if self.use_tanh:
-                    a = torch.tanh(a)
                 x[:, i_col] = inputs[:, i_col] * torch.exp(a[:, i_col]) + m[:, i_col]
             return x, -a.sum(-1, keepdim=True)
 
@@ -263,15 +264,27 @@ class CouplingLayer(nn.Module):
     from RealNVP (https://arxiv.org/abs/1605.08803).
     """
 
-    def __init__(self, num_inputs, num_hidden=64):
+    def __init__(self, num_inputs, num_hidden=64, s_act='tanh', t_act='relu'):
         super(CouplingLayer, self).__init__()
 
         self.num_inputs = num_inputs
 
-        self.main = nn.Sequential(
-            nn.Linear(num_inputs // 2, num_hidden), nn.ReLU(),
-            nn.Linear(num_hidden, num_hidden), nn.ReLU(),
-            nn.Linear(num_hidden, 2 * (self.num_inputs - num_inputs // 2)))
+        activations = {
+            'relu': nn.ReLU,
+            'sigmoid': nn.Sigmoid,
+            'tanh': nn.Tanh
+        }
+        s_act_func = activations[s_act]
+        t_act_func = activations[t_act]
+
+        self.scale_net = nn.Sequential(
+            nn.Linear(num_inputs // 2, num_hidden), s_act_func(),
+            nn.Linear(num_hidden, num_hidden), s_act_func(),
+            nn.Linear(num_hidden, self.num_inputs - num_inputs // 2))
+        self.translate_net = nn.Sequential(
+            nn.Linear(num_inputs // 2, num_hidden), t_act_func(),
+            nn.Linear(num_hidden, num_hidden), t_act_func(),
+            nn.Linear(num_hidden, self.num_inputs - num_inputs // 2))
 
         def init(m):
             if isinstance(m, nn.Linear):
@@ -281,7 +294,8 @@ class CouplingLayer(nn.Module):
     def forward(self, inputs, cond_inputs=None, mode='direct'):
         if mode == 'direct':
             x_a, x_b = inputs.chunk(2, dim=-1)
-            log_s, t = self.main(x_b).chunk(2, dim=-1)
+            log_s = self.scale_net(x_b)
+            t = self.translate_net(x_b)
             s = torch.exp(log_s)
 
             y_a = x_a * s + t
