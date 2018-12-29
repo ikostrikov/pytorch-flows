@@ -1,15 +1,14 @@
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 import datasets
+
 from . import util
 
 
 class GAS:
-
     class Data:
-
         def __init__(self, data):
 
             self.x = data.astype(np.float32)
@@ -65,7 +64,7 @@ def load_data_and_clean(file):
         data.drop(col_name, axis=1, inplace=True)
         B = get_correlation_numbers(data)
     # print(data.corr())
-    data = (data-data.mean())/data.std()
+    data = (data - data.mean()) / data.std()
 
     return data
 
@@ -73,10 +72,10 @@ def load_data_and_clean(file):
 def load_data_and_clean_and_split(file):
 
     data = load_data_and_clean(file).as_matrix()
-    N_test = int(0.1*data.shape[0])
+    N_test = int(0.1 * data.shape[0])
     data_test = data[-N_test:]
     data_train = data[0:-N_test]
-    N_validate = int(0.1*data_train.shape[0])
+    N_validate = int(0.1 * data_train.shape[0])
     data_validate = data_train[-N_validate:]
     data_train = data_train[0:-N_validate]
 

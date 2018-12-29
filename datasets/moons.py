@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from sklearn import datasets as ds
 
 import datasets
@@ -7,9 +7,7 @@ import datasets.util
 
 
 class MOONS:
-
     class Data:
-
         def __init__(self, data):
 
             self.x = data.astype(np.float32)

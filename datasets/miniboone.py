@@ -1,14 +1,13 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 import datasets
+
 from . import util
 
 
 class MINIBOONE:
-
     class Data:
-
         def __init__(self, data):
 
             self.x = data.astype(np.float32)
@@ -57,10 +56,10 @@ def load_data(root_path):
     # np.save("~/data/miniboone/data.npy", data)
 
     data = np.load(root_path)
-    N_test = int(0.1*data.shape[0])
+    N_test = int(0.1 * data.shape[0])
     data_test = data[-N_test:]
     data = data[0:-N_test]
-    N_validate = int(0.1*data.shape[0])
+    N_validate = int(0.1 * data.shape[0])
     data_validate = data[-N_validate:]
     data_train = data[0:-N_validate]
 
@@ -73,8 +72,8 @@ def load_data_normalised(root_path):
     data = np.vstack((data_train, data_validate))
     mu = data.mean(axis=0)
     s = data.std(axis=0)
-    data_train = (data_train - mu)/s
-    data_validate = (data_validate - mu)/s
-    data_test = (data_test - mu)/s
+    data_train = (data_train - mu) / s
+    data_validate = (data_validate - mu) / s
+    data_test = (data_test - mu) / s
 
     return data_train, data_validate, data_test

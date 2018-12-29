@@ -1,10 +1,12 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 from collections import Counter
 from os.path import join
 
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
 import datasets
+
 from . import util
 
 
@@ -15,7 +17,6 @@ class HEPMASS:
     """
 
     class Data:
-
         def __init__(self, data):
 
             self.x = data.astype(np.float32)
@@ -44,8 +45,10 @@ class HEPMASS:
 
 def load_data(path):
 
-    data_train = pd.read_csv(filepath_or_buffer=join(path, "1000_train.csv"), index_col=False)
-    data_test = pd.read_csv(filepath_or_buffer=join(path, "1000_test.csv"), index_col=False)
+    data_train = pd.read_csv(
+        filepath_or_buffer=join(path, "1000_train.csv"), index_col=False)
+    data_test = pd.read_csv(
+        filepath_or_buffer=join(path, "1000_test.csv"), index_col=False)
 
     return data_train, data_test
 
@@ -72,8 +75,8 @@ def load_data_no_discrete_normalised(path):
     data_train, data_test = load_data_no_discrete(path)
     mu = data_train.mean()
     s = data_train.std()
-    data_train = (data_train - mu)/s
-    data_test = (data_test - mu)/s
+    data_train = (data_train - mu) / s
+    data_test = (data_test - mu) / s
 
     return data_train, data_test
 
@@ -92,11 +95,19 @@ def load_data_no_discrete_normalised_as_array(path):
         if max_count > 5:
             features_to_remove.append(i)
         i += 1
-    data_train = data_train[:, np.array([i for i in range(data_train.shape[1]) if i not in features_to_remove])]
-    data_test = data_test[:, np.array([i for i in range(data_test.shape[1]) if i not in features_to_remove])]
+    data_train = data_train[:,
+                            np.array([
+                                i for i in range(data_train.shape[1])
+                                if i not in features_to_remove
+                            ])]
+    data_test = data_test[:,
+                          np.array([
+                              i for i in range(data_test.shape[1])
+                              if i not in features_to_remove
+                          ])]
 
     N = data_train.shape[0]
-    N_validate = int(N*0.1)
+    N_validate = int(N * 0.1)
     data_validate = data_train[-N_validate:]
     data_train = data_train[0:-N_validate]
 

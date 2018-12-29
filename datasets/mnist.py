@@ -1,9 +1,11 @@
-import numpy as np
 import gzip
 import pickle
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 import datasets
+
 from . import util
 
 
@@ -21,14 +23,16 @@ class MNIST:
 
         def __init__(self, data, logit, dequantize, rng):
 
-            x = self._dequantize(data[0], rng) if dequantize else data[0]  # dequantize pixels
-            self.x = self._logit_transform(x) if logit else x              # logit
-            self.labels = data[1]                                          # numeric labels
-            self.y = util.one_hot_encode(self.labels, 10)                  # 1-hot encoded labels
-            self.N = self.x.shape[0]                                       # number of datapoints
+            x = self._dequantize(
+                data[0], rng) if dequantize else data[0]  # dequantize pixels
+            self.x = self._logit_transform(x) if logit else x  # logit
+            self.labels = data[1]  # numeric labels
+            self.y = util.one_hot_encode(self.labels,
+                                         10)  # 1-hot encoded labels
+            self.N = self.x.shape[0]  # number of datapoints
             self.x = self.x.astype('float32')
             self.y = self.y.astype('int')
-            
+
         @staticmethod
         def _dequantize(x, rng):
             """
@@ -41,7 +45,7 @@ class MNIST:
             """
             Transforms pixel values with logit to be unconstrained.
             """
-            return util.logit(MNIST.alpha + (1 - 2*MNIST.alpha) * x)
+            return util.logit(MNIST.alpha + (1 - 2 * MNIST.alpha) * x)
 
     def __init__(self, logit=True, dequantize=True):
 

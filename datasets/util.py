@@ -1,9 +1,9 @@
-
 import os
+import pickle as pickle
+
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.random as rng
-import matplotlib.pyplot as plt
-import pickle as pickle
 
 
 def isposint(n):
@@ -33,7 +33,7 @@ def logit(x):
     return np.log(x / (1.0 - x))
 
 
-def disp_imdata(xs, imsize, layout=(1,1)):
+def disp_imdata(xs, imsize, layout=(1, 1)):
     """
     Displays an array of images, a page at a time. The user can navigate pages with
     left and right arrows, start over by pressing space, or close the figure by esc.
@@ -62,7 +62,7 @@ def disp_imdata(xs, imsize, layout=(1,1)):
     def plot_page():
         """Plots the next page."""
 
-        ii = np.arange(idx[0], idx[0]+num_plots) % num_xs
+        ii = np.arange(idx[0], idx[0] + num_plots) % num_xs
 
         for ax, i in zip(axs, ii):
             ax.imshow(xs[i].reshape(imsize), cmap='gray', interpolation='none')
@@ -131,7 +131,7 @@ def ess_importance(ws):
     sampling or sequential monte carlo). Takes as input the normalized sample weights.
     """
 
-    ess = 1.0 / np.sum(ws ** 2)
+    ess = 1.0 / np.sum(ws**2)
     return ess
 
 
@@ -149,7 +149,8 @@ def ess_mcmc(xs):
     acors = np.zeros_like(xms)
     for i in range(n_dim):
         for lag in range(n_samples):
-            acor = np.sum(xms[:n_samples-lag, i] * xms[lag:, i]) / (n_samples - lag)
+            acor = np.sum(xms[:n_samples - lag, i] * xms[lag:, i]) / (
+                n_samples - lag)
             if acor <= 0.0: break
             acors[lag, i] = acor
 
@@ -228,13 +229,17 @@ def plot_pdf_marginals(pdf, lims, gt=None, levels=(0.68, 0.95)):
                     ax[i, j].plot(xx, pp)
                     ax[i, j].set_xlim(lims[i])
                     ax[i, j].set_ylim([0, ax[i, j].get_ylim()[1]])
-                    if gt is not None: ax[i, j].vlines(gt[i], 0, ax[i, j].get_ylim()[1], color='r')
+                    if gt is not None:
+                        ax[i, j].vlines(
+                            gt[i], 0, ax[i, j].get_ylim()[1], color='r')
 
                 else:
                     xx = np.linspace(lims[i, 0], lims[i, 1], 200)
-                    yy = np.linspace(lims[j ,0], lims[j, 1], 200)
+                    yy = np.linspace(lims[j, 0], lims[j, 1], 200)
                     X, Y = np.meshgrid(xx, yy)
-                    xy = np.concatenate([X.reshape([-1, 1]), Y.reshape([-1, 1])], axis=1)
+                    xy = np.concatenate(
+                        [X.reshape([-1, 1]),
+                         Y.reshape([-1, 1])], axis=1)
                     pp = pdf.eval(xy, ii=[i, j], log=False)
                     pp = pp.reshape(list(X.shape))
                     ax[i, j].contour(X, Y, probs2contours(pp, levels), levels)
@@ -279,7 +284,9 @@ def plot_hist_marginals(data, lims=None, gt=None):
                     ax[i, j].hist(data[:, i], n_bins, normed=True)
                     ax[i, j].set_ylim([0, ax[i, j].get_ylim()[1]])
                     if lims is not None: ax[i, j].set_xlim(lims[i])
-                    if gt is not None: ax[i, j].vlines(gt[i], 0, ax[i, j].get_ylim()[1], color='r')
+                    if gt is not None:
+                        ax[i, j].vlines(
+                            gt[i], 0, ax[i, j].get_ylim()[1], color='r')
 
                 else:
                     ax[i, j].plot(data[:, i], data[:, j], 'k.', ms=2)

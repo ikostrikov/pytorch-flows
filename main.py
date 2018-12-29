@@ -2,7 +2,6 @@ import argparse
 import copy
 import math
 import sys
-from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -10,11 +9,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
+from tqdm import tqdm
 
 import datasets
 import flows as fnn
 import utils
-
 
 if sys.version_info < (3, 6):
     print('Sorry, this code might need Python 3.6 or higher')
@@ -42,7 +41,8 @@ parser.add_argument(
     '--dataset',
     default='POWER',
     help='POWER | GAS | HEPMASS | MINIBONE | BSDS300 | MOONS')
-parser.add_argument('--flow', default='maf', help='flow to use: maf | realnvp | glow')
+parser.add_argument(
+    '--flow', default='maf', help='flow to use: maf | realnvp | glow')
 parser.add_argument(
     '--no-cuda',
     action='store_true',
@@ -71,7 +71,9 @@ if args.cuda:
 
 kwargs = {'num_workers': 4, 'pin_memory': True} if args.cuda else {}
 
-assert args.dataset in ['POWER', 'GAS', 'HEPMASS', 'MINIBONE', 'BSDS300', 'MOONS', 'MNIST']
+assert args.dataset in [
+    'POWER', 'GAS', 'HEPMASS', 'MINIBONE', 'BSDS300', 'MOONS', 'MNIST'
+]
 dataset = getattr(datasets, args.dataset)()
 
 train_tensor = torch.from_numpy(dataset.trn.x)
@@ -125,16 +127,18 @@ if args.flow == 'glow':
         modules += [
             fnn.BatchNormFlow(num_inputs),
             fnn.LUInvertibleMM(num_inputs),
-            fnn.CouplingLayer(num_inputs, num_hidden, mask, s_act='tanh', t_act='relu')
+            fnn.CouplingLayer(
+                num_inputs, num_hidden, mask, s_act='tanh', t_act='relu')
         ]
     mask = 1 - mask
 elif args.flow == 'realnvp':
     mask = torch.arange(0, num_inputs) % 2
     mask = mask.to(device).float()
-    
+
     for _ in range(args.num_blocks):
         modules += [
-            fnn.CouplingLayer(num_inputs, num_hidden, mask, s_act='tanh', t_act='relu'),
+            fnn.CouplingLayer(
+                num_inputs, num_hidden, mask, s_act='tanh', t_act='relu'),
             fnn.BatchNormFlow(num_inputs)
         ]
         mask = 1 - mask
@@ -157,6 +161,7 @@ model.to(device)
 
 optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-6)
 
+
 def train(epoch):
     model.train()
     train_loss = 0
@@ -171,10 +176,10 @@ def train(epoch):
         train_loss += loss.item()
         loss.backward()
         optimizer.step()
-        
+
         pbar.update(data.size(0))
-        pbar.set_description(
-                'Train, Log likelihood in nats: {:.6f}'.format(-train_loss / (batch_idx + 1)))
+        pbar.set_description('Train, Log likelihood in nats: {:.6f}'.format(
+            -train_loss / (batch_idx + 1)))
     pbar.close()
 
     for module in model.modules():
@@ -202,8 +207,8 @@ def validate(epoch, model, loader, prefix='Validation'):
         with torch.no_grad():
             val_loss += -model.log_probs(data).sum().item()  # sum up batch loss
         pbar.update(data.size(0))
-        pbar.set_description(
-                'Val, Log likelihood in nats: {:.6f}'.format(-val_loss / pbar.n))
+        pbar.set_description('Val, Log likelihood in nats: {:.6f}'.format(
+            -val_loss / pbar.n))
 
     pbar.close()
     return val_loss / len(loader.dataset)
@@ -227,11 +232,11 @@ for epoch in range(args.epochs):
         best_validation_loss = validation_loss
         best_model = copy.deepcopy(model)
 
-    print('Best validation at epoch {}: Average Log Likelihood in nats: {:.4f}'.format(
-        best_validation_epoch, -best_validation_loss))
+    print(
+        'Best validation at epoch {}: Average Log Likelihood in nats: {:.4f}'.
+        format(best_validation_epoch, -best_validation_loss))
 
     if args.dataset == 'MOONS' and epoch % 10 == 0:
         utils.save_moons_plot(epoch, best_model, dataset)
-
 
 validate(best_validation_epoch, best_model, test_loader, prefix='Test')

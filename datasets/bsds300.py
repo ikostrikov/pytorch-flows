@@ -1,8 +1,9 @@
-import numpy as np
 import h5py
 import matplotlib.pyplot as plt
+import numpy as np
 
 import datasets
+
 from . import util
 
 
@@ -15,6 +16,7 @@ class BSDS300:
         """
         Constructs the dataset.
         """
+
         def __init__(self, data):
 
             self.x = data[:]
@@ -75,4 +77,3 @@ class BSDS300:
         util.disp_imdata(images, self.image_size, [6, 10])
 
         plt.show()
-

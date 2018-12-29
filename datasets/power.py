@@ -1,14 +1,12 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 import datasets
 import datasets.util
 
 
 class POWER:
-
     class Data:
-
         def __init__(self, data):
 
             self.x = data.astype(np.float32)
@@ -52,9 +50,9 @@ def load_data_split_with_noise():
     # Add noise
     ############################
     # global_intensity_noise = 0.1*rng.rand(N, 1)
-    voltage_noise = 0.01*rng.rand(N, 1)
+    voltage_noise = 0.01 * rng.rand(N, 1)
     # grp_noise = 0.001*rng.rand(N, 1)
-    gap_noise = 0.001*rng.rand(N, 1)
+    gap_noise = 0.001 * rng.rand(N, 1)
     sm_noise = rng.rand(N, 3)
     time_noise = np.zeros((N, 1))
     # noise = np.hstack((gap_noise, grp_noise, voltage_noise, global_intensity_noise, sm_noise, time_noise))
@@ -62,10 +60,10 @@ def load_data_split_with_noise():
     noise = np.hstack((gap_noise, voltage_noise, sm_noise, time_noise))
     data = data + noise
 
-    N_test = int(0.1*data.shape[0])
+    N_test = int(0.1 * data.shape[0])
     data_test = data[-N_test:]
     data = data[0:-N_test]
-    N_validate = int(0.1*data.shape[0])
+    N_validate = int(0.1 * data.shape[0])
     data_validate = data[-N_validate:]
     data_train = data[0:-N_validate]
 
@@ -78,8 +76,8 @@ def load_data_normalised():
     data = np.vstack((data_train, data_validate))
     mu = data.mean(axis=0)
     s = data.std(axis=0)
-    data_train = (data_train - mu)/s
-    data_validate = (data_validate - mu)/s
-    data_test = (data_test - mu)/s
+    data_train = (data_train - mu) / s
+    data_validate = (data_validate - mu) / s
+    data_test = (data_test - mu) / s
 
     return data_train, data_validate, data_test
