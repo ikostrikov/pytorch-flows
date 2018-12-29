@@ -190,7 +190,7 @@ def validate(epoch, model, loader, prefix='Validation'):
                 'Val, Log likelihood in nats: {:.6f}'.format(-val_loss / pbar.n))
 
     pbar.close()
-    return val_loss
+    return val_loss / len(loader.dataset)
 
 
 best_validation_loss = float('inf')
