@@ -8,11 +8,12 @@ EPS = 1e-5
 BATCH_SIZE = 32
 NUM_INPUTS = 11
 NUM_HIDDEN = 64
-
+mask = torch.arange(0, NUM_INPUTS) % 2
+mask = mask.unsqueeze(0)
 
 class TestFlow(unittest.TestCase):
     def testCoupling(self):
-        m1 = fnn.FlowSequential(fnn.CouplingLayer(NUM_INPUTS, NUM_HIDDEN))
+        m1 = fnn.FlowSequential(fnn.CouplingLayer(NUM_INPUTS, NUM_HIDDEN, mask))
 
         x = torch.randn(BATCH_SIZE, NUM_INPUTS)
 
@@ -107,7 +108,7 @@ class TestFlow(unittest.TestCase):
     def testSequential(self):
         m1 = fnn.FlowSequential(
             fnn.ActNorm(NUM_INPUTS), fnn.InvertibleMM(NUM_INPUTS),
-            fnn.CouplingLayer(NUM_INPUTS, NUM_HIDDEN))
+            fnn.CouplingLayer(NUM_INPUTS, NUM_HIDDEN, mask))
 
         x = torch.randn(BATCH_SIZE, NUM_INPUTS)
 
@@ -131,7 +132,7 @@ class TestFlow(unittest.TestCase):
     def testSequentialBN(self):
         m1 = fnn.FlowSequential(
             fnn.BatchNormFlow(NUM_INPUTS), fnn.InvertibleMM(NUM_INPUTS),
-            fnn.CouplingLayer(NUM_INPUTS, NUM_HIDDEN))
+            fnn.CouplingLayer(NUM_INPUTS, NUM_HIDDEN, mask))
 
         m1.train()
         x = torch.randn(BATCH_SIZE, NUM_INPUTS)

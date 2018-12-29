@@ -42,7 +42,7 @@ parser.add_argument(
     '--dataset',
     default='POWER',
     help='POWER | GAS | HEPMASS | MINIBONE | BSDS300 | MOONS')
-parser.add_argument('--flow', default='maf', help='flow to use: maf | glow')
+parser.add_argument('--flow', default='maf', help='flow to use: maf | realnvp | glow')
 parser.add_argument(
     '--no-cuda',
     action='store_true',
@@ -115,16 +115,31 @@ act = 'tanh' if args.dataset is 'GAS' else 'relu'
 
 modules = []
 
-assert args.flow in ['maf', 'glow']
-for _ in range(args.num_blocks):
-    if args.flow == 'glow':
-        print("Warning: Results for GLOW are not as good as for MAF yet.")
+assert args.flow in ['maf', 'realnvp', 'glow']
+if args.flow == 'glow':
+    mask = torch.arange(0, num_inputs) % 2
+    mask = mask.to(device).float()
+
+    print("Warning: Results for GLOW are not as good as for MAF yet.")
+    for _ in range(args.num_blocks):
         modules += [
             fnn.BatchNormFlow(num_inputs),
             fnn.LUInvertibleMM(num_inputs),
-            fnn.CouplingLayer(num_inputs, num_hidden, s_act='tanh', t_act='relu')
+            fnn.CouplingLayer(num_inputs, num_hidden, mask, s_act='tanh', t_act='relu')
         ]
-    elif args.flow == 'maf':
+    mask = 1 - mask
+elif args.flow == 'realnvp':
+    mask = torch.arange(0, num_inputs) % 2
+    mask = mask.to(device).float()
+    
+    for _ in range(args.num_blocks):
+        modules += [
+            fnn.CouplingLayer(num_inputs, num_hidden, mask, s_act='tanh', t_act='relu'),
+            fnn.BatchNormFlow(num_inputs)
+        ]
+        mask = 1 - mask
+elif args.flow == 'maf':
+    for _ in range(args.num_blocks):
         modules += [
             fnn.MADE(num_inputs, num_hidden, act=act),
             fnn.BatchNormFlow(num_inputs),

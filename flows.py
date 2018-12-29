@@ -309,11 +309,12 @@ class CouplingLayer(nn.Module):
     from RealNVP (https://arxiv.org/abs/1605.08803).
     """
 
-    def __init__(self, num_inputs, num_hidden=64, s_act='tanh', t_act='relu'):
+    def __init__(self, num_inputs, num_hidden, mask, s_act='tanh', t_act='relu'):
         super(CouplingLayer, self).__init__()
 
         self.num_inputs = num_inputs
-
+        self.mask = mask
+        
         activations = {
             'relu': nn.ReLU,
             'sigmoid': nn.Sigmoid,
@@ -323,13 +324,13 @@ class CouplingLayer(nn.Module):
         t_act_func = activations[t_act]
 
         self.scale_net = nn.Sequential(
-            nn.Linear(num_inputs // 2, num_hidden), s_act_func(),
+            nn.Linear(num_inputs, num_hidden), s_act_func(),
             nn.Linear(num_hidden, num_hidden), s_act_func(),
-            nn.Linear(num_hidden, self.num_inputs - num_inputs // 2))
+            nn.Linear(num_hidden, num_inputs))
         self.translate_net = nn.Sequential(
-            nn.Linear(num_inputs // 2, num_hidden), t_act_func(),
+            nn.Linear(num_inputs, num_hidden), t_act_func(),
             nn.Linear(num_hidden, num_hidden), t_act_func(),
-            nn.Linear(num_hidden, self.num_inputs - num_inputs // 2))
+            nn.Linear(num_hidden, num_inputs))
 
         def init(m):
             if isinstance(m, nn.Linear):
@@ -337,24 +338,17 @@ class CouplingLayer(nn.Module):
                 nn.init.orthogonal_(m.weight.data)
 
     def forward(self, inputs, cond_inputs=None, mode='direct'):
+        mask = self.mask
         if mode == 'direct':
-            x_a, x_b = inputs.chunk(2, dim=-1)
-            log_s = self.scale_net(x_b)
-            t = self.translate_net(x_b)
+            log_s = self.scale_net(inputs * mask) * (1 - mask)
+            t = self.translate_net(inputs * mask) * (1 - mask)
             s = torch.exp(log_s)
-
-            y_a = x_a * s + t
-            y_b = x_b
-            return torch.cat([y_a, y_b], dim=-1), log_s.sum(-1, keepdim=True)
+            return inputs * s + t, log_s.sum(-1, keepdim=True)
         else:
-            y_a, y_b = inputs.chunk(2, dim=-1)
-            log_s = self.scale_net(y_b)
-            t = self.translate_net(y_b)
+            log_s = self.scale_net(inputs * mask) * (1 - mask)
+            t = self.translate_net(inputs * mask) * (1 - mask)
             s = torch.exp(-log_s)
-
-            x_a = (y_a - t) * s
-            x_b = y_b
-            return torch.cat([x_a, x_b], dim=-1), -log_s.sum(-1, keepdim=True)
+            return (inputs - t) * s, -log_s.sum(-1, keepdim=True)
 
 
 class FlowSequential(nn.Sequential):
