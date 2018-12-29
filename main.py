@@ -2,6 +2,7 @@ import argparse
 import copy
 import math
 import sys
+from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -142,18 +143,23 @@ optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-6)
 
 def train(epoch):
     model.train()
+    train_loss = 0
+
+    pbar = tqdm(total=len(train_loader.dataset))
     for batch_idx, data in enumerate(train_loader):
         if isinstance(data, list):
             data = data[0]
         data = data.to(device)
         optimizer.zero_grad()
         loss = -model.log_probs(data).mean()
+        train_loss += loss.item()
         loss.backward()
         optimizer.step()
-        if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+        
+        pbar.update(data.size(0))
+        pbar.set_description(
+                'Train, Log likelihood in nats: {:.6f}'.format(-train_loss / (batch_idx + 1)))
+    pbar.close()
 
     for module in model.modules():
         if isinstance(module, fnn.BatchNormFlow):
@@ -171,15 +177,22 @@ def validate(epoch, model, loader, prefix='Validation'):
     model.eval()
     val_loss = 0
 
-    for data in loader:
+    pbar = tqdm(total=len(loader.dataset))
+    pbar.set_description('Eval')
+    for batch_idx, data in enumerate(loader):
         if isinstance(data, list):
             data = data[0]
         data = data.to(device)
         with torch.no_grad():
             val_loss += -model.log_probs(data).sum().item()  # sum up batch loss
+        pbar.update(data.size(0))
+        pbar.set_description(
+                'Val, Log likelihood in nats: {:.6f}'.format(-val_loss / pbar.n))
+
+    pbar.close()
 
     val_loss /= len(loader.dataset)
-    print('\n{} set: Average loss: {:.4f}\n'.format(prefix, val_loss))
+    print('{} set: Average log likelihood in nats: {:.4f}'.format(prefix, -val_loss))
 
     return val_loss
 
@@ -189,6 +202,8 @@ best_validation_epoch = 0
 best_model = model
 
 for epoch in range(args.epochs):
+    print('\nEpoch: {}'.format(epoch))
+
     train(epoch)
     validation_loss = validate(epoch, model, valid_loader)
 
@@ -200,7 +215,7 @@ for epoch in range(args.epochs):
         best_validation_loss = validation_loss
         best_model = copy.deepcopy(model)
 
-    print('Best validation at epoch {}: Average loss: {:.4f}\n'.format(
+    print('Best validation at epoch {}: Average Log Likelihood in nats: {:.4f}'.format(
         best_validation_epoch, best_validation_loss))
 
     if args.dataset == 'MOONS' and epoch % 10 == 0:
