@@ -303,8 +303,10 @@ class CouplingLayer(nn.Module):
             return torch.cat([y_a, y_b], dim=-1), log_s.sum(-1, keepdim=True)
         else:
             y_a, y_b = inputs.chunk(2, dim=-1)
-            log_s, t = self.main(y_b).chunk(2, dim=-1)
+            log_s = self.scale_net(y_b)
+            t = self.translate_net(y_b)
             s = torch.exp(-log_s)
+
             x_a = (y_a - t) * s
             x_b = y_b
             return torch.cat([x_a, x_b], dim=-1), -log_s.sum(-1, keepdim=True)
