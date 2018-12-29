@@ -216,7 +216,7 @@ for epoch in range(args.epochs):
         best_model = copy.deepcopy(model)
 
     print('Best validation at epoch {}: Average Log Likelihood in nats: {:.4f}'.format(
-        best_validation_epoch, best_validation_loss))
+        best_validation_epoch, -best_validation_loss))
 
     if args.dataset == 'MOONS' and epoch % 10 == 0:
         utils.save_moons_plot(epoch, best_model, dataset)
