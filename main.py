@@ -107,6 +107,8 @@ num_hidden = {
     'MOONS': 64
 }[args.dataset]
 
+act = 'tanh' if args.dataset is 'GAS' else 'relu'
+
 modules = []
 
 assert args.flow in ['maf', 'glow']
@@ -116,11 +118,11 @@ for _ in range(args.num_blocks):
         modules += [
             fnn.BatchNormFlow(num_inputs),
             fnn.InvertibleMM(num_inputs),
-            fnn.CouplingLayer(num_inputs, num_hidden)
+            fnn.CouplingLayer(num_inputs, num_hidden, s_act='tanh', t_act='relu')
         ]
     elif args.flow == 'maf':
         modules += [
-            fnn.MADE(num_inputs, num_hidden),
+            fnn.MADE(num_inputs, num_hidden, act=act),
             fnn.BatchNormFlow(num_inputs),
             fnn.Reverse(num_inputs)
         ]
