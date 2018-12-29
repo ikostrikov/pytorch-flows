@@ -71,7 +71,7 @@ if args.cuda:
 
 kwargs = {'num_workers': 4, 'pin_memory': True} if args.cuda else {}
 
-assert args.dataset in ['POWER', 'GAS', 'HEPMASS', 'MINIBONE', 'BSDS300', 'MOONS']
+assert args.dataset in ['POWER', 'GAS', 'HEPMASS', 'MINIBONE', 'BSDS300', 'MOONS', 'MNIST']
 dataset = getattr(datasets, args.dataset)()
 
 train_tensor = torch.from_numpy(dataset.trn.x)
@@ -107,7 +107,8 @@ num_hidden = {
     'HEPMASS': 512,
     'MINIBOONE': 512,
     'BSDS300': 512,
-    'MOONS': 64
+    'MOONS': 64,
+    'MNIST': 1024
 }[args.dataset]
 
 act = 'tanh' if args.dataset is 'GAS' else 'relu'
