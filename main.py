@@ -12,6 +12,8 @@ import torch.utils.data
 
 import datasets
 import flows as fnn
+import utils
+
 
 if sys.version_info < (3, 6):
     print('Sorry, this code might need Python 3.6 or higher')
@@ -214,25 +216,8 @@ for epoch in range(args.epochs):
     print('Best validation at epoch {}: Average loss: {:.4f}\n'.format(
         best_validation_epoch, best_validation_loss))
 
+    if args.dataset == 'MOONS' and epoch % 10 == 0:
+        utils.save_moons_plot(epoch, best_model, dataset)
+
+
 validate(best_validation_epoch, best_model, test_loader, prefix='Test')
-
-if args.dataset == 'MOONS':
-    # generate some examples
-    best_model.eval()
-    u = np.random.randn(500, 2).astype(np.float32)
-    u_tens = torch.from_numpy(u).to(device)
-    x_synth = best_model.forward(u_tens, mode='inverse')[0].detach().cpu().numpy()
-
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure()
-
-    ax = fig.add_subplot(121)
-    ax.plot(dataset.val.x[:,0], dataset.val.x[:,1], '.')
-    ax.set_title('Real data')
-
-    ax = fig.add_subplot(122)
-    ax.plot(x_synth[:,0], x_synth[:,1], '.')
-    ax.set_title('Synth data')
-
-    plt.show()
