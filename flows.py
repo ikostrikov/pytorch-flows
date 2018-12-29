@@ -1,5 +1,6 @@
 import types
 
+import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -317,13 +318,15 @@ class FlowSequential(nn.Sequential):
     In addition to a forward pass it implements a backward pass and
     computes log jacobians.
     """
-
+    
     def forward(self, inputs, cond_inputs=None, mode='direct', logdets=None):
         """ Performs a forward or backward pass for flow modules.
         Args:
             inputs: a tuple of inputs and logdets
             mode: to run direct computation or inverse
         """
+        self.num_inputs = inputs.size(-1)
+        
         if logdets is None:
             logdets = torch.zeros(inputs.size(0), 1, device=inputs.device)
 
@@ -338,3 +341,16 @@ class FlowSequential(nn.Sequential):
                 logdets += logdet
 
         return inputs, logdets
+    
+    def log_probs(self, inputs):
+        u, log_jacob = self(inputs)
+        log_probs = (-0.5 * u.pow(2) - 0.5 * math.log(2 * math.pi)).sum(
+            -1, keepdim=True)
+        return (log_probs + log_jacob).sum(-1, keepdim=True)
+
+    def sample(self, num_samples):
+        device = next(self.parameters()).device
+        noise = torch.Tensor(num_samples, self.num_inputs).normal_()
+        noise = noise.to(device)
+        samples = self.forward(noise, mode='inverse')[0]
+        return samples

@@ -7,9 +7,7 @@ import matplotlib.pyplot as plt
 def save_moons_plot(epoch, best_model, dataset):
     # generate some examples
     best_model.eval()
-    u = np.random.randn(500, 2).astype(np.float32)
-    u_tens = torch.from_numpy(u).to(next(best_model.parameters()).device)
-    x_synth = best_model.forward(u_tens, mode='inverse')[0].detach().cpu().numpy()
+    x_synth = best_model.sample(500).detach().cpu().numpy()
 
     fig = plt.figure()
 

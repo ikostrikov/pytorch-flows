@@ -140,16 +140,6 @@ model.to(device)
 
 optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-6)
 
-
-def flow_loss(u, log_jacob, size_average=True):
-    log_probs = (-0.5 * u.pow(2) - 0.5 * math.log(2 * math.pi)).sum(
-        -1, keepdim=True)
-    loss = -(log_probs + log_jacob).sum()
-    if size_average:
-        loss /= u.size(0)
-    return loss
-
-
 def train(epoch):
     model.train()
     for batch_idx, data in enumerate(train_loader):
@@ -157,8 +147,7 @@ def train(epoch):
             data = data[0]
         data = data.to(device)
         optimizer.zero_grad()
-        u, log_jacob = model(data)
-        loss = flow_loss(u, log_jacob)
+        loss = -model.log_probs(data).mean()
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -187,9 +176,7 @@ def validate(epoch, model, loader, prefix='Validation'):
             data = data[0]
         data = data.to(device)
         with torch.no_grad():
-            u, log_jacob = model(data)
-            val_loss += flow_loss(
-                u, log_jacob, size_average=False).item()  # sum up batch loss
+            val_loss += -model.log_probs(data).sum().item()  # sum up batch loss
 
     val_loss /= len(loader.dataset)
     print('\n{} set: Average loss: {:.4f}\n'.format(prefix, val_loss))
