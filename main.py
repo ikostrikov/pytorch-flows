@@ -120,7 +120,7 @@ for _ in range(args.num_blocks):
         print("Warning: Results for GLOW are not as good as for MAF yet.")
         modules += [
             fnn.BatchNormFlow(num_inputs),
-            fnn.InvertibleMM(num_inputs),
+            fnn.LUInvertibleMM(num_inputs),
             fnn.CouplingLayer(num_inputs, num_hidden, s_act='tanh', t_act='relu')
         ]
     elif args.flow == 'maf':
