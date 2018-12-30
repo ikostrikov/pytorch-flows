@@ -406,9 +406,10 @@ class FlowSequential(nn.Sequential):
             -1, keepdim=True)
         return (log_probs + log_jacob).sum(-1, keepdim=True)
 
-    def sample(self, num_samples):
+    def sample(self, num_samples=None, noise=None):
+        if noise is None:
+            noise = torch.Tensor(num_samples, self.num_inputs).normal_()
         device = next(self.parameters()).device
-        noise = torch.Tensor(num_samples, self.num_inputs).normal_()
         noise = noise.to(device)
         samples = self.forward(noise, mode='inverse')[0]
         return samples
