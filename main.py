@@ -82,7 +82,7 @@ assert args.dataset in [
 dataset = getattr(datasets, args.dataset)()
 
 if args.cond:
-    assert args.flow == 'maf' and args.dataset == 'MNIST', \
+    assert args.flow in ['maf', 'realnvp'] and args.dataset == 'MNIST', \
         'Conditional flows are implemented only for maf and MNIST'
     
     train_tensor = torch.from_numpy(dataset.trn.x)
@@ -151,7 +151,8 @@ if args.flow == 'glow':
             fnn.BatchNormFlow(num_inputs),
             fnn.LUInvertibleMM(num_inputs),
             fnn.CouplingLayer(
-                num_inputs, num_hidden, mask, s_act='tanh', t_act='relu')
+                num_inputs, num_hidden, mask, num_cond_inputs,
+                s_act='tanh', t_act='relu')
         ]
     mask = 1 - mask
 elif args.flow == 'realnvp':
@@ -161,7 +162,8 @@ elif args.flow == 'realnvp':
     for _ in range(args.num_blocks):
         modules += [
             fnn.CouplingLayer(
-                num_inputs, num_hidden, mask, s_act='tanh', t_act='relu'),
+                num_inputs, num_hidden, mask, num_cond_inputs,
+                s_act='tanh', t_act='relu'),
             fnn.BatchNormFlow(num_inputs)
         ]
         mask = 1 - mask

@@ -332,6 +332,7 @@ class CouplingLayer(nn.Module):
                  num_inputs,
                  num_hidden,
                  mask,
+                 num_cond_inputs=None,
                  s_act='tanh',
                  t_act='relu'):
         super(CouplingLayer, self).__init__()
@@ -343,12 +344,17 @@ class CouplingLayer(nn.Module):
         s_act_func = activations[s_act]
         t_act_func = activations[t_act]
 
+        if num_cond_inputs is not None:
+            total_inputs = num_inputs + num_cond_inputs
+        else:
+            total_inputs = num_inputs
+            
         self.scale_net = nn.Sequential(
-            nn.Linear(num_inputs, num_hidden), s_act_func(),
+            nn.Linear(total_inputs, num_hidden), s_act_func(),
             nn.Linear(num_hidden, num_hidden), s_act_func(),
             nn.Linear(num_hidden, num_inputs))
         self.translate_net = nn.Sequential(
-            nn.Linear(num_inputs, num_hidden), t_act_func(),
+            nn.Linear(total_inputs, num_hidden), t_act_func(),
             nn.Linear(num_hidden, num_hidden), t_act_func(),
             nn.Linear(num_hidden, num_inputs))
 
@@ -359,14 +365,19 @@ class CouplingLayer(nn.Module):
 
     def forward(self, inputs, cond_inputs=None, mode='direct'):
         mask = self.mask
+        
+        masked_inputs = inputs * mask
+        if cond_inputs is not None:
+            masked_inputs = torch.cat([masked_inputs, cond_inputs], -1)
+        
         if mode == 'direct':
-            log_s = self.scale_net(inputs * mask) * (1 - mask)
-            t = self.translate_net(inputs * mask) * (1 - mask)
+            log_s = self.scale_net(masked_inputs) * (1 - mask)
+            t = self.translate_net(masked_inputs) * (1 - mask)
             s = torch.exp(log_s)
             return inputs * s + t, log_s.sum(-1, keepdim=True)
         else:
-            log_s = self.scale_net(inputs * mask) * (1 - mask)
-            t = self.translate_net(inputs * mask) * (1 - mask)
+            log_s = self.scale_net(masked_inputs) * (1 - mask)
+            t = self.translate_net(masked_inputs) * (1 - mask)
             s = torch.exp(-log_s)
             return (inputs - t) * s, -log_s.sum(-1, keepdim=True)
 
