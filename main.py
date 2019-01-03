@@ -238,10 +238,16 @@ def validate(epoch, model, loader, prefix='Validation'):
     pbar.set_description('Eval')
     for batch_idx, data in enumerate(loader):
         if isinstance(data, list):
+            if len(data) > 1:
+                cond_data = data[1].float()
+                cond_data = cond_data.to(device)
+            else:
+                cond_data = None
+
             data = data[0]
         data = data.to(device)
         with torch.no_grad():
-            val_loss += -model.log_probs(data).sum().item()  # sum up batch loss
+            val_loss += -model.log_probs(data, cond_data).sum().item()  # sum up batch loss
         pbar.update(data.size(0))
         pbar.set_description('Val, Log likelihood in nats: {:.6f}'.format(
             -val_loss / pbar.n))
