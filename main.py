@@ -216,8 +216,14 @@ def train(epoch):
         if isinstance(module, fnn.BatchNormFlow):
             module.momentum = 0
 
-    with torch.no_grad():
-        model(train_loader.dataset.tensors[0].to(data.device))
+    if args.cond:
+        with torch.no_grad():
+            model(train_loader.dataset.tensors[0].to(data.device),
+                train_loader.dataset.tensors[1].to(data.device).float())
+    else:
+        with torch.no_grad():
+            model(train_loader.dataset.tensors[0].to(data.device))
+
 
     for module in model.modules():
         if isinstance(module, fnn.BatchNormFlow):
