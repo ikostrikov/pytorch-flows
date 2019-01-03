@@ -31,18 +31,28 @@ def save_moons_plot(epoch, best_model, dataset):
     plt.close()
 
 
-fixed_noise = torch.Tensor(64, 28 * 28).normal_()
+batch_size = 100
+fixed_noise = torch.Tensor(batch_size, 28 * 28).normal_()
+y = torch.arange(batch_size).unsqueeze(-1) % 10
+y_onehot = torch.FloatTensor(batch_size, 10)
+y_onehot.zero_()
+y_onehot.scatter_(1, y, 1)
 
-def save_images(epoch, best_model):
+
+def save_images(epoch, best_model, cond):
     best_model.eval()
     with torch.no_grad():
-        imgs = best_model.sample(64, noise=fixed_noise).detach().cpu()
-        imgs = torch.sigmoid(imgs.view(64, 1, 28, 28))
+        if cond:
+            imgs = best_model.sample(batch_size, noise=fixed_noise, cond_inputs=y_onehot).detach().cpu()
+        else:
+            imgs = best_model.sample(batch_size, noise=fixed_noise).detach().cpu()
+
+        imgs = torch.sigmoid(imgs.view(batch_size, 1, 28, 28))
     
     try:
         os.makedirs('images')
     except OSError:
         pass
 
-    torchvision.utils.save_image(imgs, 'images/img_{:03d}.png'.format(epoch), nrow=8)
+    torchvision.utils.save_image(imgs, 'images/img_{:03d}.png'.format(epoch), nrow=10)
 

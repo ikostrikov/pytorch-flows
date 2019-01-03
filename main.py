@@ -49,6 +49,11 @@ parser.add_argument(
     default=False,
     help='disables CUDA training')
 parser.add_argument(
+    '--cond',
+    action='store_true',
+    default=False,
+    help='train class conditional flow (only for MNIST)')
+parser.add_argument(
     '--num-blocks',
     type=int,
     default=5,
@@ -68,7 +73,7 @@ device = torch.device("cuda:0" if args.cuda else "cpu")
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
-
+    
 kwargs = {'num_workers': 4, 'pin_memory': True} if args.cuda else {}
 
 assert args.dataset in [
@@ -76,15 +81,33 @@ assert args.dataset in [
 ]
 dataset = getattr(datasets, args.dataset)()
 
-train_tensor = torch.from_numpy(dataset.trn.x)
-train_dataset = torch.utils.data.TensorDataset(train_tensor)
+if args.cond:
+    assert args.flow == 'maf' and args.dataset == 'MNIST', \
+        'Conditional flows are implemented only for maf and MNIST'
+    
+    train_tensor = torch.from_numpy(dataset.trn.x)
+    train_labels = torch.from_numpy(dataset.trn.y)
+    train_dataset = torch.utils.data.TensorDataset(train_tensor, train_labels)
 
-valid_tensor = torch.from_numpy(dataset.val.x)
-valid_dataset = torch.utils.data.TensorDataset(valid_tensor)
+    valid_tensor = torch.from_numpy(dataset.val.x)
+    valid_labels = torch.from_numpy(dataset.val.y)
+    valid_dataset = torch.utils.data.TensorDataset(valid_tensor, valid_labels)
 
-test_tensor = torch.from_numpy(dataset.tst.x)
-test_dataset = torch.utils.data.TensorDataset(test_tensor)
+    test_tensor = torch.from_numpy(dataset.tst.x)
+    test_labels = torch.from_numpy(dataset.tst.y)
+    test_dataset = torch.utils.data.TensorDataset(test_tensor, test_labels)
+    num_cond_inputs = 10
+else:
+    train_tensor = torch.from_numpy(dataset.trn.x)
+    train_dataset = torch.utils.data.TensorDataset(train_tensor)
 
+    valid_tensor = torch.from_numpy(dataset.val.x)
+    valid_dataset = torch.utils.data.TensorDataset(valid_tensor)
+
+    test_tensor = torch.from_numpy(dataset.tst.x)
+    test_dataset = torch.utils.data.TensorDataset(test_tensor)
+    num_cond_inputs = None
+    
 train_loader = torch.utils.data.DataLoader(
     train_dataset, batch_size=args.batch_size, shuffle=True, **kwargs)
 
@@ -145,7 +168,7 @@ elif args.flow == 'realnvp':
 elif args.flow == 'maf':
     for _ in range(args.num_blocks):
         modules += [
-            fnn.MADE(num_inputs, num_hidden, act=act),
+            fnn.MADE(num_inputs, num_hidden, num_cond_inputs, act=act),
             fnn.BatchNormFlow(num_inputs),
             fnn.Reverse(num_inputs)
         ]
@@ -155,7 +178,8 @@ model = fnn.FlowSequential(*modules)
 for module in model.modules():
     if isinstance(module, nn.Linear):
         nn.init.orthogonal_(module.weight)
-        module.bias.data.fill_(0)
+        if hasattr(module, 'bias') and module.bias is not None:
+            module.bias.data.fill_(0)
 
 model.to(device)
 
@@ -169,10 +193,16 @@ def train(epoch):
     pbar = tqdm(total=len(train_loader.dataset))
     for batch_idx, data in enumerate(train_loader):
         if isinstance(data, list):
+            if len(data) > 1:
+                cond_data = data[1].float()
+                cond_data = cond_data.to(device)
+            else:
+                cond_data = None
+
             data = data[0]
         data = data.to(device)
         optimizer.zero_grad()
-        loss = -model.log_probs(data).mean()
+        loss = -model.log_probs(data, cond_data).mean()
         train_loss += loss.item()
         loss.backward()
         optimizer.step()
@@ -239,7 +269,7 @@ for epoch in range(args.epochs):
     if args.dataset == 'MOONS' and epoch % 10 == 0:
         utils.save_moons_plot(epoch, model, dataset)
     elif args.dataset == 'MNIST' and epoch % 1 == 0:
-        utils.save_images(epoch, model)
+        utils.save_images(epoch, model, args.cond)
 
 
 validate(best_validation_epoch, best_model, test_loader, prefix='Test')
