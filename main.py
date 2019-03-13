@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data
 from tqdm import tqdm
+from tensorboardX import SummaryWriter
 
 import datasets
 import flows as fnn
@@ -140,7 +141,7 @@ act = 'tanh' if args.dataset is 'GAS' else 'relu'
 
 modules = []
 
-assert args.flow in ['maf', 'realnvp', 'glow']
+assert args.flow in ['maf', 'maf-split', 'maf-split-glow', 'realnvp', 'glow']
 if args.flow == 'glow':
     mask = torch.arange(0, num_inputs) % 2
     mask = mask.to(device).float()
@@ -174,6 +175,22 @@ elif args.flow == 'maf':
             fnn.BatchNormFlow(num_inputs),
             fnn.Reverse(num_inputs)
         ]
+elif args.flow == 'maf-split':
+    for _ in range(args.num_blocks):
+        modules += [
+            fnn.MADESplit(num_inputs, num_hidden, num_cond_inputs,
+                         s_act='tanh', t_act='relu'),
+            fnn.BatchNormFlow(num_inputs),
+            fnn.Reverse(num_inputs)
+        ]
+elif args.flow == 'maf-split-glow':
+    for _ in range(args.num_blocks):
+        modules += [
+            fnn.MADESplit(num_inputs, num_hidden, num_cond_inputs,
+                         s_act='tanh', t_act='relu'),
+            fnn.BatchNormFlow(num_inputs),
+            fnn.InvertibleMM(num_inputs)
+        ]
 
 model = fnn.FlowSequential(*modules)
 
@@ -187,8 +204,11 @@ model.to(device)
 
 optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-6)
 
+writer = SummaryWriter(comment=args.flow + "_" + args.dataset)
+global_step = 0
 
 def train(epoch):
+    global global_step, writer
     model.train()
     train_loss = 0
 
@@ -212,8 +232,12 @@ def train(epoch):
         pbar.update(data.size(0))
         pbar.set_description('Train, Log likelihood in nats: {:.6f}'.format(
             -train_loss / (batch_idx + 1)))
+        
+        writer.add_scalar('training/loss', loss.item(), global_step)
+        global_step += 1
+        
     pbar.close()
-
+        
     for module in model.modules():
         if isinstance(module, fnn.BatchNormFlow):
             module.momentum = 0
@@ -233,6 +257,8 @@ def train(epoch):
 
 
 def validate(epoch, model, loader, prefix='Validation'):
+    global global_step, writer
+
     model.eval()
     val_loss = 0
 
@@ -253,6 +279,8 @@ def validate(epoch, model, loader, prefix='Validation'):
         pbar.update(data.size(0))
         pbar.set_description('Val, Log likelihood in nats: {:.6f}'.format(
             -val_loss / pbar.n))
+
+    writer.add_scalar('validation/LL', val_loss / len(loader.dataset), epoch)
 
     pbar.close()
     return val_loss / len(loader.dataset)

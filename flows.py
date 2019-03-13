@@ -54,6 +54,71 @@ class MaskedLinear(nn.Module):
 nn.MaskedLinear = MaskedLinear
 
 
+class MADESplit(nn.Module):
+    """ An implementation of MADE
+    (https://arxiv.org/abs/1502.03509s).
+    """
+
+    def __init__(self,
+                 num_inputs,
+                 num_hidden,
+                 num_cond_inputs=None,
+                 s_act='tanh',
+                 t_act='relu'):
+        super(MADESplit, self).__init__()
+
+        activations = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
+
+        input_mask = get_mask(num_inputs, num_hidden, num_inputs,
+                              mask_type='input')
+        hidden_mask = get_mask(num_hidden, num_hidden, num_inputs)
+        output_mask = get_mask(num_hidden, num_inputs, num_inputs,
+                               mask_type='output')
+
+        act_func = activations[s_act]
+        self.s_joiner = nn.MaskedLinear(num_inputs, num_hidden, input_mask,
+                                      num_cond_inputs)
+
+        self.s_trunk = nn.Sequential(act_func(),
+                                   nn.MaskedLinear(num_hidden, num_hidden,
+                                                   hidden_mask), act_func(),
+                                   nn.MaskedLinear(num_hidden, num_inputs,
+                                                   output_mask))
+
+        act_func = activations[t_act]
+        self.t_joiner = nn.MaskedLinear(num_inputs, num_hidden, input_mask,
+                                      num_cond_inputs)
+
+        self.t_trunk = nn.Sequential(act_func(),
+                                   nn.MaskedLinear(num_hidden, num_hidden,
+                                                   hidden_mask), act_func(),
+                                   nn.MaskedLinear(num_hidden, num_inputs,
+                                                   output_mask))
+        
+    def forward(self, inputs, cond_inputs=None, mode='direct'):
+        if mode == 'direct':
+            h = self.s_joiner(inputs, cond_inputs)
+            m = self.s_trunk(h)
+            
+            h = self.t_joiner(inputs, cond_inputs)
+            a = self.t_trunk(h)
+            
+            u = (inputs - m) * torch.exp(-a)
+            return u, -a.sum(-1, keepdim=True)
+
+        else:
+            x = torch.zeros_like(inputs)
+            for i_col in range(inputs.shape[1]):
+                h = self.s_joiner(x, cond_inputs)
+                m = self.s_trunk(h)
+
+                h = self.t_joiner(x, cond_inputs)
+                a = self.t_trunk(h)
+
+                x[:, i_col] = inputs[:, i_col] * torch.exp(
+                    a[:, i_col]) + m[:, i_col]
+            return x, -a.sum(-1, keepdim=True)
+
 class MADE(nn.Module):
     """ An implementation of MADE
     (https://arxiv.org/abs/1502.03509s).
