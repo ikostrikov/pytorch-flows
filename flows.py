@@ -64,8 +64,11 @@ class MADESplit(nn.Module):
                  num_hidden,
                  num_cond_inputs=None,
                  s_act='tanh',
-                 t_act='relu'):
+                 t_act='relu',
+                 pre_exp_tanh=False):
         super(MADESplit, self).__init__()
+
+        self.pre_exp_tanh = pre_exp_tanh
 
         activations = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
@@ -102,6 +105,9 @@ class MADESplit(nn.Module):
             
             h = self.t_joiner(inputs, cond_inputs)
             a = self.t_trunk(h)
+
+            if self.pre_exp_tanh:
+                a = F.tanh(a)
             
             u = (inputs - m) * torch.exp(-a)
             return u, -a.sum(-1, keepdim=True)
@@ -114,6 +120,9 @@ class MADESplit(nn.Module):
 
                 h = self.t_joiner(x, cond_inputs)
                 a = self.t_trunk(h)
+
+                if self.pre_exp_tanh:
+                    a = F.tanh(a)
 
                 x[:, i_col] = inputs[:, i_col] * torch.exp(
                     a[:, i_col]) + m[:, i_col]
@@ -128,7 +137,8 @@ class MADE(nn.Module):
                  num_inputs,
                  num_hidden,
                  num_cond_inputs=None,
-                 act='relu'):
+                 act='relu',
+                 pre_exp_tanh=False):
         super(MADE, self).__init__()
 
         activations = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
