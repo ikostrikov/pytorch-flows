@@ -107,7 +107,7 @@ class MADESplit(nn.Module):
             a = self.t_trunk(h)
 
             if self.pre_exp_tanh:
-                a = F.tanh(a)
+                a = torch.tanh(a)
             
             u = (inputs - m) * torch.exp(-a)
             return u, -a.sum(-1, keepdim=True)
@@ -122,7 +122,7 @@ class MADESplit(nn.Module):
                 a = self.t_trunk(h)
 
                 if self.pre_exp_tanh:
-                    a = F.tanh(a)
+                    a = torch.tanh(a)
 
                 x[:, i_col] = inputs[:, i_col] * torch.exp(
                     a[:, i_col]) + m[:, i_col]
