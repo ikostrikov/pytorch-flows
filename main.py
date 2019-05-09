@@ -155,7 +155,7 @@ if args.flow == 'glow':
                 num_inputs, num_hidden, mask, num_cond_inputs,
                 s_act='tanh', t_act='relu')
         ]
-    mask = 1 - mask
+        mask = 1 - mask
 elif args.flow == 'realnvp':
     mask = torch.arange(0, num_inputs) % 2
     mask = mask.to(device).float()
