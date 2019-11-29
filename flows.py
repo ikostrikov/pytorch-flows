@@ -56,7 +56,7 @@ nn.MaskedLinear = MaskedLinear
 
 class MADESplit(nn.Module):
     """ An implementation of MADE
-    (https://arxiv.org/abs/1502.03509s).
+    (https://arxiv.org/abs/1502.03509).
     """
 
     def __init__(self,
@@ -130,7 +130,7 @@ class MADESplit(nn.Module):
 
 class MADE(nn.Module):
     """ An implementation of MADE
-    (https://arxiv.org/abs/1502.03509s).
+    (https://arxiv.org/abs/1502.03509).
     """
 
     def __init__(self,
