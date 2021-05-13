@@ -367,8 +367,8 @@ class Shuffle(nn.Module):
 
     def __init__(self, num_inputs):
         super(Shuffle, self).__init__()
-        self.perm = np.random.permutation(num_inputs)
-        self.inv_perm = np.argsort(self.perm)
+        self.register_buffer("perm", torch.randperm(num_inputs))
+        self.register_buffer("inv_perm", torch.argsort(self.perm))
 
     def forward(self, inputs, cond_inputs=None, mode='direct'):
         if mode == 'direct':
